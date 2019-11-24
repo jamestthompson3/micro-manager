@@ -1,0 +1,23 @@
+{
+  "name": "micro-manager",
+  "version": "0.0.1",
+  "description": "Library for schema driven microservice request management",
+  "main": "index.js",
+  "author": "taylor thompson",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.7.4",
+    "@babel/plugin-transform-runtime": "^7.7.4",
+    "eslint": "^6.7.0",
+    "eslint-plugin-jest": "^23.0.4",
+    "jest": "^24.9.0"
+  },
+  "dependencies": {
+    "jsonschema": "^1.2.4"
+  }
+}
