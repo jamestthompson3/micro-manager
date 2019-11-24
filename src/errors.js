@@ -25,3 +25,11 @@ export class InvalidHTTPMethodError extends Error {
     this.name = "InvalidHTTPMethodError";
   }
 }
+
+export class ValidationError extends Error {
+  constructor({ stack, instance }) {
+    const validationMsg = `${stack}. Received ${instance}`;
+    super(validationMsg);
+    this.name = "ValidationError";
+  }
+}

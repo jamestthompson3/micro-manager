@@ -2,7 +2,8 @@ const { Manager } = require("./index");
 const {
   InvalidUrlError,
   PathNotInSchemaError,
-  MethodNotSupportedError
+  MethodNotSupportedError,
+  ValidationError
 } = require("./errors");
 
 const TEST_URL = "localhost:8080/api/products/v2";
@@ -16,7 +17,7 @@ const TEST_SCHEMA = {
       properties: {
         description: { type: "string" },
         name: { type: "string" },
-        price: { type: "string" }
+        price: { type: "integer" }
       },
       required: ["name", "description", "price"]
     },
@@ -71,6 +72,7 @@ describe("Parses request schemas", () => {
 
   test("correctly returns white-listed http methods", () => {
     expect(() => setup.products().get()).toBeDefined();
+    expect(() => setup.products().post()).toBeDefined();
   });
 
   test("Throws error when trying to access non-supported http methods", () => {
@@ -79,5 +81,35 @@ describe("Parses request schemas", () => {
 
   test("Prints supported methods when trying to access non-supported http methods", () => {
     expect(() => setup.products().patch()).toThrow("get,post");
+  });
+
+  describe("Validates requests based on schema", () => {
+    const setup = new Manager(TEST_URL).validateWith(TEST_SCHEMA);
+
+    test("Successfully validates request that passes schema", () => {
+      expect(() =>
+        setup.products().post(
+          {},
+          {
+            description: "a cool product",
+            name: "the art of computer science",
+            price: 20
+          }
+        )
+      ).not.toThrow();
+    });
+
+    test("Catches invalid types in request", () => {
+      expect(() =>
+        setup.products().post(
+          {},
+          {
+            description: 42,
+            name: "the art of computer science",
+            price: 20
+          }
+        )
+      ).toThrow(ValidationError);
+    });
   });
 });

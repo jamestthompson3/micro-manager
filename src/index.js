@@ -2,7 +2,8 @@ const {
   InvalidUrlError,
   PathNotInSchemaError,
   MethodNotSupportedError,
-  InvalidHTTPMethodError
+  InvalidHTTPMethodError,
+  ValidationError
 } = require("./errors");
 
 const { HTTPMethods } = require("./constants");
@@ -22,10 +23,11 @@ export class Manager {
     this.transformer = adapterFunc;
   }
   adapt(reqObj) {
-    console.log(reqObj);
+    // console.log(reqObj);
     return reqObj;
   }
   validateWith(schema) {
+    const self = this;
     return accessInterceptor(function(_, path) {
       if (!(path in schema))
         throw new PathNotInSchemaError(
@@ -38,34 +40,40 @@ export class Manager {
               `${method} is not a valid http method.`
             );
           const supportedMethods = schema[path].methods;
-          if (!(method in supportedMethods))
+          if (!supportedMethods.includes(method))
             throw new MethodNotSupportedError(
               `${method} not supported in ${path}.\n supported methods are \n ${Object.values(
                 supportedMethods
               )}`
             );
           return (params, body) => {
-            this.validateRequest(params, body, schema[path]);
+            const { paramsValidator, bodyValidator } = schema[path];
+            if (params && paramsValidator) {
+              const { valid, errors } = self.validator.validate(
+                params,
+                paramsValidator
+              );
+              if (!valid) throw new ValidationError(errors[0]);
+            }
+            if (body && bodyValidator) {
+              const { valid, errors } = self.validator.validate(
+                body,
+                bodyValidator
+              );
+              if (!valid) throw new ValidationError(errors[0]);
+            }
+
             // create promise via this.adapter
             // TODO better url building
-            this.adapt({
+            self.adapt({
               method,
               params,
               body,
-              url: `${this.baseURL}${specifier}`
+              url: `${self.baseURL}${specifier}`
             });
           };
         });
     });
-  }
-  validateRequest(params, body, validationSchema) {
-    const { paramsValidator, bodyValidator } = validationSchema;
-    if (params && paramsValidator) {
-      this.validator.validate(params, paramsValidator);
-    }
-    if (body && bodyValidator) {
-      this.validator.validate(body, bodyValidator);
-    }
   }
 }
 
