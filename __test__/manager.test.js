@@ -1,10 +1,12 @@
-const { Manager } = require("./index");
+const { Manager } = require("../src/index");
 const {
   InvalidUrlError,
   PathNotInSchemaError,
   MethodNotSupportedError,
   ValidationError
-} = require("./errors");
+} = require("../src/errors");
+
+const template = require("lodash/template");
 
 const TEST_URL = "localhost:8080/api/products/v2";
 
@@ -29,6 +31,26 @@ const TEST_SCHEMA = {
         priceTo: { type: "integer" },
         desc: { type: "string" },
         name: { type: "string" }
+      }
+    }
+  },
+  product: {
+    methods: ["get", "patch"],
+    path: template("/${ productId }"),
+    bodyValidator: {
+      id: "updateProduct",
+      type: "object",
+      properties: {
+        description: { type: "string" },
+        name: { type: "string" },
+        price: { type: "string" }
+      }
+    },
+    paramsValidator: {
+      id: "queryProduct",
+      type: "object",
+      properties: {
+        id: { type: "string" }
       }
     }
   }
@@ -111,5 +133,76 @@ describe("Parses request schemas", () => {
         )
       ).toThrow(ValidationError);
     });
+  });
+});
+
+describe("Returns correct request object to adapter function", () => {
+  test("returns body without params to adapter function", () => {
+    const adapter = jest.fn();
+    const setup = new Manager(TEST_URL, adapter).validateWith(TEST_SCHEMA);
+    setup.products().post(
+      {},
+      {
+        description: "a cool product",
+        name: "the art of computer science",
+        price: 20
+      }
+    );
+    expect(adapter).toHaveBeenCalledWith({
+      method: "post",
+      params: {},
+      body: {
+        description: "a cool product",
+        name: "the art of computer science",
+        price: 20
+      },
+      url: "localhost:8080/api/products/v2"
+    });
+  });
+
+  test("returns params without body to adapter function", () => {
+    const adapter = jest.fn();
+    const setup = new Manager(TEST_URL, adapter).validateWith(TEST_SCHEMA);
+    setup.products().get(
+      {
+        priceFrom: 60,
+        priceTo: 120
+      },
+      {}
+    );
+    setup.adapter = function(requestObject) {
+      expect(requestObject).toBe({
+        method: "get",
+        params: {
+          priceFrom: 60,
+          priceTo: 120
+        },
+        body: {},
+        url: "localhost:8080/api/vi/products/v2"
+      });
+    };
+  });
+
+  test("correctly compiles URL with passed arguments", () => {
+    const adapter = jest.fn();
+    const setup = new Manager(TEST_URL, adapter).validateWith(TEST_SCHEMA);
+    setup.product({ productId: "abc123" }).get(
+      {
+        priceFrom: 60,
+        priceTo: 120
+      },
+      {}
+    );
+    setup.adapter = function(requestObject) {
+      expect(requestObject).toBe({
+        method: "get",
+        params: {
+          priceFrom: 60,
+          priceTo: 120
+        },
+        body: {},
+        url: "localhost:8080/api/vi/products/v2/abc123"
+      });
+    };
   });
 });

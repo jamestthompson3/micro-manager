@@ -11,27 +11,26 @@ const { HTTPMethods } = require("./constants");
 const { Validator } = require("jsonschema");
 
 export class Manager {
-  constructor(baseURL) {
+  constructor(baseURL, adaptor) {
     const urlTest = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+|(?:www\.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[+~%/.\w\-_]*)?\??(?:[-+=&;%@.\w_]*)#?(?:[.!/\\\w]*))?)/;
     if (!urlTest.test(baseURL)) {
       throw new InvalidUrlError(`${baseURL} is not a valid url`);
     }
     this.baseURL = baseURL;
+    this.adaptor = adaptor;
     this.validator = new Validator();
   }
-  adapter(adapterFunc) {
-    this.transformer = adapterFunc;
-  }
   adapt(reqObj) {
-    // console.log(reqObj);
-    return reqObj;
+    return this.adaptor && this.adaptor(reqObj);
   }
   validateWith(schema) {
     const self = this;
-    return accessInterceptor(function(_, path) {
-      if (!(path in schema))
+    return accessInterceptor(function(_, schemaPath) {
+      if (!(schemaPath in schema))
         throw new PathNotInSchemaError(
-          `${path} not in schema.\n valid paths are\n [${Object.keys(schema)}]`
+          `${schemaPath} not in schema.\n valid schemaPaths are\n [${Object.keys(
+            schema
+          )}]`
         );
       return specifier =>
         accessInterceptor(function(_, method) {
@@ -39,37 +38,37 @@ export class Manager {
             throw new InvalidHTTPMethodError(
               `${method} is not a valid http method.`
             );
-          const supportedMethods = schema[path].methods;
+          const supportedMethods = schema[schemaPath].methods;
           if (!supportedMethods.includes(method))
             throw new MethodNotSupportedError(
-              `${method} not supported in ${path}.\n supported methods are \n ${Object.values(
+              `${method} not supported in ${schemaPath}.\n supported methods are \n ${Object.values(
                 supportedMethods
               )}`
             );
           return (params, body) => {
-            const { paramsValidator, bodyValidator } = schema[path];
-            if (params && paramsValidator) {
+            const { paramsValidator, bodyValidator, path } = schema[schemaPath];
+            if (Object.entries(params).length > 0 && paramsValidator) {
               const { valid, errors } = self.validator.validate(
                 params,
                 paramsValidator
               );
               if (!valid) throw new ValidationError(errors[0]);
             }
-            if (body && bodyValidator) {
+            if (Object.entries(body).length > 0 && bodyValidator) {
               const { valid, errors } = self.validator.validate(
                 body,
                 bodyValidator
               );
               if (!valid) throw new ValidationError(errors[0]);
             }
-
-            // create promise via this.adapter
-            // TODO better url building
+            const url = specifier
+              ? compileURL(self.baseURL, specifier, path)
+              : self.baseURL;
             self.adapt({
               method,
               params,
               body,
-              url: `${self.baseURL}${specifier}`
+              url
             });
           };
         });
@@ -86,6 +85,10 @@ function accessInterceptor(interceptor) {
       }
     }
   );
+}
+
+function compileURL(base, fragmentArgs, fragment) {
+  return `%{base}${fragment(fragmentArgs)}`;
 }
 
 /*
@@ -105,7 +108,7 @@ function accessInterceptor(interceptor) {
  *          required: ["name", "description", "price"]
  *        },
  *        paramsValidator: {
- *            id: 'queryProduct',
+ *            id: 'queryProducts',
  *            type: 'object',
  *            properties: {
  *              priceFrom: {type: "integer"},
@@ -115,5 +118,24 @@ function accessInterceptor(interceptor) {
  *            }
  *        }
  *    },
+ *    product: {
+ *        methods: ['get', 'patch'],
+ *        bodyValidator: {
+ *          id: 'updateProduct',
+ *          type: 'object',
+ *          properties: {
+ *              description: {type: "string"},
+ *              name: {type: "string"},
+ *              price: {type: "string"}
+ *          }
+ *        },
+ *        paramsValidator: {
+ *          id: "queryProduct",
+ *          type: 'object',
+ *          properties: {
+ *            id: {type: "string"}
+ *          }
+ *        }
+ *    }
  * }
  */
