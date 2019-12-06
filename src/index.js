@@ -88,54 +88,5 @@ function accessInterceptor(interceptor) {
 }
 
 function compileURL(base, fragmentArgs, fragment) {
-  return `%{base}${fragment(fragmentArgs)}`;
+  return `${base}${fragment(fragmentArgs)}`;
 }
-
-/*
- * SCHEMAS
- *
- * const mySchema = {
- *    products: {
- *        methods: ['get', 'post'],
- *        bodyValidator: {
- *          id: 'createProduct',
- *          type: 'object',
- *          properties: {
- *              description: {type: "string"},
- *              name: {type: "string"},
- *              price: {type: "string"}
- *          },
- *          required: ["name", "description", "price"]
- *        },
- *        paramsValidator: {
- *            id: 'queryProducts',
- *            type: 'object',
- *            properties: {
- *              priceFrom: {type: "integer"},
- *              priceTo: {type: "integer"},
- *              desc: {type: "string"},
- *              name: {type: string}
- *            }
- *        }
- *    },
- *    product: {
- *        methods: ['get', 'patch'],
- *        bodyValidator: {
- *          id: 'updateProduct',
- *          type: 'object',
- *          properties: {
- *              description: {type: "string"},
- *              name: {type: "string"},
- *              price: {type: "string"}
- *          }
- *        },
- *        paramsValidator: {
- *          id: "queryProduct",
- *          type: 'object',
- *          properties: {
- *            id: {type: "string"}
- *          }
- *        }
- *    }
- * }
- */
